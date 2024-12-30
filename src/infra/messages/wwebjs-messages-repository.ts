@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConversationRepository } from 'src/domain/messages/application/conversation/conversation-repository';
 import { MessagesRepository } from 'src/domain/messages/application/messages/messages-repository';
 import { QRCodeRepository } from 'src/domain/messages/application/qr-code/qr-code-repository';
 import { Client, LocalAuth, Message } from 'whatsapp-web.js';
@@ -7,7 +8,10 @@ import { Client, LocalAuth, Message } from 'whatsapp-web.js';
 export class WwebjsRepository implements MessagesRepository {
   private client: Client;
 
-  constructor(private readonly qrcode: QRCodeRepository) {
+  constructor(
+    private readonly qrcode: QRCodeRepository,
+    private readonly conversation: ConversationRepository,
+  ) {
     this.client = new Client({
       authStrategy: new LocalAuth(),
     });
@@ -24,9 +28,13 @@ export class WwebjsRepository implements MessagesRepository {
       console.log('WhatsApp client is ready!');
     });
   }
-  sendMessage(): void {
+  async sendMessage(): Promise<void> {
     this.client.on('message', async (message: Message) => {
-      if (message.body === 'ping') return message.reply('pong');
+      // YOU CAN USE OTHERS TRIGGERS LIKE EXACT MESSAGE
+      if (message.from === 'SPECIFY_PHONE') {
+        const messageGpt = await this.conversation.chat(message.body);
+        return message.reply(messageGpt);
+      }
     });
   }
 
